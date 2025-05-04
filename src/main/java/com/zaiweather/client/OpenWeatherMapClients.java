@@ -1,5 +1,8 @@
 package com.zaiweather.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zaiweather.dto.MainData;
+import com.zaiweather.dto.WindData;
 import com.zaiweather.model.WeatherResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,12 +16,14 @@ import java.util.Map;
  * Client for retrieving current weather data from the OpenWeatherMap API.
  */
 @Component
-public class OpenWeatherMapClient {
+public class OpenWeatherMapClients {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenWeatherMapClient.class);
 
     @Value("${openweathermap.api.key}")
     private String apiKey;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Fetches current weather data for Melbourne from OpenWeatherMap.
@@ -43,16 +48,19 @@ public class OpenWeatherMapClient {
                 return null;
             }
 
-            if (!response.containsKey("main") || !response.containsKey("wind")) {
+            Object mainRaw = response.get("main");
+            Object windRaw = response.get("wind");
+
+            if (mainRaw == null || windRaw == null) {
                 logger.warn("Incomplete response: missing 'main' or 'wind' keys - {}", response);
                 return null;
             }
 
-            Map<String, Object> main = (Map<String, Object>) response.get("main");
-            Map<String, Object> wind = (Map<String, Object>) response.get("wind");
+            MainData main = objectMapper.convertValue(mainRaw, MainData.class);
+            WindData wind = objectMapper.convertValue(windRaw, WindData.class);
 
-            int temp = (int) Math.round((Double) main.get("temp"));
-            double windSpeed = ((Number) wind.get("speed")).doubleValue();
+            int temp = (int) Math.round(main.getTemp());
+            double windSpeed = wind.getSpeed();
 
             logger.info("OpenWeatherMap API response parsed: temperature={}°C, windSpeed={} m/s", temp, windSpeed);
 
